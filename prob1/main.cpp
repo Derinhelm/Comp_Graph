@@ -1,5 +1,16 @@
 #include <GLFW/glfw3.h>
-
+float x = 1.0, y = 0.0;
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+    // Когда пользователь нажимает ESC, мы устанавливаем свойство WindowShouldClose в true, 
+    // и приложение после этого закроется
+    if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    	x = 0.0;
+        y = 1.0;
+    }
+    if(key == GLFW_KEY_ENTER && action == GLFW_PRESS)
+    	glfwSetWindowShouldClose(window, GL_TRUE);
+}
 int main(void)
 {
     //Настройка GLFW
@@ -32,12 +43,14 @@ int main(void)
   glfwGetFramebufferSize(window, &width, &height);
   
   glViewport(0, 0, width, height);
+
+  glfwSetKeyCallback(window, key_callback);  
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         //glClearColor задает красные, зеленые, синие и Альфа-значения, используемые glClear для очистки цветовых буферов.
-        glClearColor(1.0, 0.0, 0.0, 0.0);
+        glClearColor(x, y, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         /* Swap front and back buffers */
@@ -51,4 +64,3 @@ int main(void)
     return 0;
 }
 
-   
