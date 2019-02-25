@@ -43,14 +43,19 @@ float sdBox( vec3 p, vec3 b )
   return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
 }
 
-bool RayIntersection(vec3 ray_pos, vec3 ray_dir){
+int RayIntersection(vec3 ray_pos, vec3 ray_dir){
     int max_steps = 64;
     float mindist = 0.01f;
     for (int i = 0; i < max_steps; i++) {
-        //float dist = sdSphere(ray_pos - vec3(0.7f, 0.7f, 0.7f), 1.0f);
-        float dist = sdBox(ray_pos - vec3(-0.9f, -0.9f, -0.9f), vec3(0.5, 0.5, 0.5));
+        float dist1 = sdSphere(ray_pos - vec3(1.0f, 1.0f, 1.0f), 0.7f);
+        float dist2 = sdBox(ray_pos - vec3(-1.0f, -1.0f, -1.0f), vec3(0.5, 0.5, 0.5));
+        float dist = min(dist1, dist2);
         if (abs(dist) < mindist) {
-            return true;
+            if (dist1 < dist2) {
+                return 1;
+            } else {
+                return 2;
+            }
         }
         if (abs(dist) < 0.01f) {
             if (dist < 0) {
@@ -61,7 +66,7 @@ bool RayIntersection(vec3 ray_pos, vec3 ray_dir){
         } 
         ray_pos = ray_pos + ray_dir * dist;
     }
-    return false;
+    return 0;
 }
 
 void main(void)
@@ -84,12 +89,19 @@ void main(void)
   //
   ray_pos = (g_rayMatrix*float4(ray_pos,1)).xyz;
   ray_dir = float3x3(g_rayMatrix)*ray_dir;
- 
-  if (RayIntersection(ray_pos, ray_dir)) {
-    fragColor = float4(0.0, 0.0, 1.0, 1.0);
-  } else {
-    fragColor = float4(0.5, 1.0, 1.0, 1.0); 
+  switch (RayIntersection(ray_pos, ray_dir)) {
+      case 2:
+          fragColor = float4(0.5, 1.0, 1.0, 1.0); 
+          break;
+      case 1:
+          fragColor = float4(0.0f, 1.0f, 0.0f, 1.0);
+          break;
+      case 0:
+          fragColor = float4(1.0f, 0.0f, 0.0f, 1.0); 
+          break;
+
   }
+
 }
 
 
