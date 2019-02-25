@@ -37,13 +37,18 @@ float sdSphere( vec3 p, float s )
   return length(p)-s;
 }
 
-
+float sdBox( vec3 p, vec3 b )
+{
+  vec3 d = abs(p) - b;
+  return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
+}
 
 bool RayIntersection(vec3 ray_pos, vec3 ray_dir){
     int max_steps = 64;
     float mindist = 0.01f;
     for (int i = 0; i < max_steps; i++) {
-        float dist = sdSphere(ray_pos, 1.0f);
+        //float dist = sdSphere(ray_pos, 1.0f);
+        float dist = sdBox(ray_pos, vec3(0.5, 0.5, 0.5));
         if (abs(dist) < mindist) {
             return true;
         }
