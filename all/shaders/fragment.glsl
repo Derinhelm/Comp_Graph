@@ -19,15 +19,14 @@ uniform float3 g_bBoxMax   = float3(+1,+1,+1);
 uniform float4x4 g_rayMatrix;
 
 uniform float4   g_bgColor = float4(0,0,1,1);
-uniform float3 light = float3(1.5f, 1.5f, 1.5f);
-uniform float3 lightColor = float3(1.0f, 1.0f, 1.0f);
+
 
 uniform float3 g_camPos = float3(0, 0, 5);
 
 uniform float mindist = 0.001f;
 
 uniform float3 plane_norm = normalize(vec3(0.0f, 1.0f, 0.0f));
-
+uniform float2 vec_tor = vec2(1.0f, 0.1f);
 float3 EyeRayDir(float x, float y, float w, float h)
 {
 	float fov = 3.141592654f/(2.0f); 
@@ -72,7 +71,7 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
                 dist = sdPlane(ray_pos, vec4(plane_norm, 1.0f));
                 break;
             case 3:
-                //
+                dist = sdTorus(ray_pos - float3(0.2, 0.0, 0.0), vec_tor);
                 break;
 
         }
@@ -94,7 +93,7 @@ float2 ManyRayIntersection(vec3 ray_pos, vec3 ray_dir) { // rez.x - рассто
     float2 rez;
     rez.x = d;
     rez.y = 1;
-    for (int i = 2; i < 3; i++) {
+    for (int i = 2; i <= 3; i++) {
         float new_dist = RayIntersection(ray_pos, ray_dir, i);
         if (new_dist != -1.0f) {
             if (rez.x == -1.0f || rez.x > new_dist) {
@@ -104,12 +103,20 @@ float2 ManyRayIntersection(vec3 ray_pos, vec3 ray_dir) { // rez.x - рассто
     }
     return rez;
 }
-float DistanceEvaluation(float3 v)
+float DistanceEvaluation(float3 v, int number_figure)
 {
-    return sdSphere(v, 1.0f);
+    switch (number_figure) {
+        case 1:
+            return sdSphere(v, 1.0f);
+        case 2:
+            return sdPlane(v, vec4(plane_norm, 1.0f));//???????????????????????
+        case 3:
+            return sdTorus(v, vec_tor);
+    }
 }
 
-float3 EstimateNormal(float3 z, float eps)
+
+float3 EstimateNormal(float3 z, float eps, int number_figure)
 {
     float3 z1 = z + float3(eps, 0, 0);
     float3 z2 = z - float3(eps, 0, 0);
@@ -117,9 +124,9 @@ float3 EstimateNormal(float3 z, float eps)
     float3 z4 = z - float3(0, eps, 0);
     float3 z5 = z + float3(0, 0, eps);
     float3 z6 = z - float3(0, 0, eps);
-    float dx = DistanceEvaluation(z1) - DistanceEvaluation(z2);
-    float dy = DistanceEvaluation(z3) - DistanceEvaluation(z4);
-    float dz = DistanceEvaluation(z5) - DistanceEvaluation(z6);
+    float dx = DistanceEvaluation(z1, number_figure) - DistanceEvaluation(z2, number_figure);
+    float dy = DistanceEvaluation(z3, number_figure) - DistanceEvaluation(z4, number_figure);
+    float dz = DistanceEvaluation(z5, number_figure) - DistanceEvaluation(z6, number_figure);
     return normalize(float3(dx, dy, dz) / (2.0*eps));
 }
 
@@ -127,27 +134,32 @@ float3 EstimateNormal(float3 z, float eps)
 void main(void)
 {	
 
-  float w = float(g_screenWidth);
-  float h = float(g_screenHeight);
+    float w = float(g_screenWidth);
+    float h = float(g_screenHeight);
 
   // get curr pixelcoordinates
   //
-  float x = fragmentTexCoord.x*w; 
-  float y = fragmentTexCoord.y*h;
+    float x = fragmentTexCoord.x*w; 
+    float y = fragmentTexCoord.y*h;
 
   // generate initial ray
   //
-  float3 ray_pos = float3(0,0,0); 
-  float3 ray_dir = EyeRayDir(x,y,w,h);
+    float3 ray_pos = float3(0,0,0); 
+    float3 ray_dir = EyeRayDir(x,y,w,h);
 
   // transorm ray with matrix
   //
     ray_pos = (g_rayMatrix*float4(ray_pos,1)).xyz;
     ray_dir = float3x3(g_rayMatrix)*ray_dir;
-    float3 objectColor;
+    float3 light[2];
+    light[0] = float3(1.5f, 1.5f, 1.0f);
+    light[1] = float3(0.8f, -1.5f, 1.0f);;
+    float3 lightColor = float3(1.0f, 1.0f, 1.0f);
+
+
     float2 intersect = ManyRayIntersection(ray_pos, ray_dir);
-    vec3 norm;
-    vec3 point_pos;
+    float3 norm, result, point_pos, objectColor;
+    float3 ItogColor = float3(0.0f, 0.0f, 0.0f);
     if (intersect.x ==  -1.0f) {
         fragColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
     } else {
@@ -155,42 +167,47 @@ void main(void)
             case 1:
                 objectColor = float3(0.0, 1.0, 0.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
-                norm = normalize(EstimateNormal(point_pos, 0.01f));
+                norm = normalize(EstimateNormal(point_pos, 0.01f, 1));
                 break;
             case 2:
                 objectColor = float3(1.0, 0.0, 0.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
-                norm = plane_norm;
+                norm = normalize(EstimateNormal(point_pos, 0.01f, 2));
                 break;
             case 3:
-                //
+                objectColor = float3(0.0, 0.0, 1.0);
+                point_pos = ray_pos + ray_dir * intersect.x;
+                norm = normalize(EstimateNormal(point_pos, 0.01f, 3));
                 break;
-
         }
-        float ambientStrength = 0.15f;
-        vec3 ambient = ambientStrength * lightColor;
-        
-        
-      
-        vec3 lightDir = normalize(light - point_pos);
-        if (length((light + ManyRayIntersection(light, -lightDir).x * (-lightDir)) - point_pos) > 0.1f) {
-            vec3 result = ambient * objectColor; //shadow
-            fragColor = vec4(result, 1.0f);
-        } else {
-            
-            float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * lightColor;
 
-            float specularStrength = 0.5f;
-            vec3 viewDir = normalize(g_camPos - point_pos);
-            vec3 reflectDir = reflect(-lightDir, norm);
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
-            vec3 specular = specularStrength * spec * lightColor;
+        for (int j = 0; j < 3; j++) {
+            float3 cur_light = light[j];
+            
+            float ambientStrength = 0.15f;
+            float3 ambient = ambientStrength * lightColor;     
+            float3 lightDir = normalize(cur_light - point_pos);
+            if (length((cur_light + ManyRayIntersection(cur_light, -lightDir).x * (-lightDir)) - point_pos) > 0.1f) {
+                result = ambient * objectColor; //shadow
+            } else {
+                float diff = max(dot(norm, lightDir), 0.0);
+                float3 diffuse = diff * lightColor;
+
+                float specularStrength = 0.5f;
+                float3 viewDir = normalize(g_camPos - point_pos);
+                float3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+                float3 specular = specularStrength * spec * lightColor;
   
-            vec3 result = (ambient + diffuse + specular) * objectColor;
-            fragColor = vec4(result, 1.0f);
-      }
-  }
+                result = (ambient + diffuse + specular) * objectColor;
+            }
+            ItogColor += result;
+        }
+
+ 
+        fragColor = float4(ItogColor, 1.0f);
+    }
+    
 
 }
 
