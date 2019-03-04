@@ -27,6 +27,9 @@ uniform float mindist = 0.001f;
 
 uniform float3 plane_norm = normalize(vec3(0.0f, 1.0f, 0.0f));
 uniform float2 vec_tor = vec2(1.0f, 0.1f);
+uniform float3 vec_cyl = float3(0.0,0.0,0.1);
+
+
 float3 EyeRayDir(float x, float y, float w, float h)
 {
 	float fov = 3.141592654f/(2.0f); 
@@ -58,6 +61,12 @@ float sdTorus(vec3 p, vec2 t)
     return length(q)-t.y;
 }
 
+float sdCylinder( vec3 p, vec3 c )
+{
+  return length(p.xz-c.xy)-c.z;
+}
+
+
 float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
     int max_steps = 64;
     float alldist = 0.0f;
@@ -72,6 +81,9 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
                 break;
             case 3:
                 dist = sdTorus(ray_pos - float3(0.2, 0.0, 0.0), vec_tor);
+                break;
+            case 4:
+                dist = sdCylinder(ray_pos, vec_cyl);
                 break;
 
         }
@@ -93,7 +105,7 @@ float2 ManyRayIntersection(vec3 ray_pos, vec3 ray_dir) { // rez.x - рассто
     float2 rez;
     rez.x = d;
     rez.y = 1;
-    for (int i = 2; i <= 3; i++) {
+    for (int i = 2; i < 5; i++) {
         float new_dist = RayIntersection(ray_pos, ray_dir, i);
         if (new_dist != -1.0f) {
             if (rez.x == -1.0f || rez.x > new_dist) {
@@ -109,9 +121,11 @@ float DistanceEvaluation(float3 v, int number_figure)
         case 1:
             return sdSphere(v, 1.0f);
         case 2:
-            return sdPlane(v, vec4(plane_norm, 1.0f));//???????????????????????
+            return sdPlane(v, vec4(plane_norm, 1.0f));
         case 3:
             return sdTorus(v, vec_tor);
+        case 4:
+            return sdCylinder(v, vec_cyl);
     }
 }
 
@@ -153,7 +167,7 @@ void main(void)
     ray_dir = float3x3(g_rayMatrix)*ray_dir;
     float3 light[2];
     light[0] = float3(1.5f, 1.5f, 1.0f);
-    light[1] = float3(0.8f, -1.5f, 1.0f);;
+    light[1] = float3(0.8f, -1.0f, 0.5f);
     float3 lightColor = float3(1.0f, 1.0f, 1.0f);
 
 
@@ -178,6 +192,11 @@ void main(void)
                 objectColor = float3(0.0, 0.0, 1.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 3));
+                break;
+            case 4:
+                objectColor = float3(0.0, 1.0, 1.0);
+                point_pos = ray_pos + ray_dir * intersect.x;
+                norm = normalize(EstimateNormal(point_pos, 0.01f, 4));
                 break;
         }
 
