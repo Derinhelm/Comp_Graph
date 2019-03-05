@@ -28,7 +28,11 @@ uniform float mindist = 0.001f;
 uniform float3 plane_norm = normalize(vec3(0.0f, 1.0f, 0.0f));
 uniform float2 vec_tor = vec2(1.0f, 0.1f);
 uniform float3 vec_cyl = float3(0.0,0.0,0.1);
-
+uniform mat4 m = mat4(
+    1, 0, 0, 0,
+    0, 0.86602540378, 0.5, 0,
+    0, -0.5, 0.86602540378, 0,
+    0, 0, 0, 1);
 
 float3 EyeRayDir(float x, float y, float w, float h)
 {
@@ -60,6 +64,12 @@ float sdTorus(vec3 p, vec2 t)
     vec2 q = vec2(length(p.xz)-t.x,p.y);
     return length(q)-t.y;
 }
+float turnTor( vec3 p)
+{
+    mat4 inv = inverse(m);
+    vec3 q = (inv*vec4(p, 1.0)).xyz;
+    return sdTorus(q, vec_tor);
+}
 
 float sdCylinder( vec3 p, vec3 c )
 {
@@ -80,7 +90,7 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
                 dist = sdPlane(ray_pos, vec4(plane_norm, 1.0f));
                 break;
             case 3:
-                dist = sdTorus(ray_pos - float3(0.2, 0.0, 0.0), vec_tor);
+                dist = turnTor(ray_pos - float3(0.2, 0.0, 0.0));
                 break;
             case 4:
                 dist = sdCylinder(ray_pos, vec_cyl);
@@ -123,7 +133,7 @@ float DistanceEvaluation(float3 v, int number_figure)
         case 2:
             return sdPlane(v, vec4(plane_norm, 1.0f));
         case 3:
-            return sdTorus(v, vec_tor);
+            return turnTor(v);
         case 4:
             return sdCylinder(v, vec_cyl);
     }
