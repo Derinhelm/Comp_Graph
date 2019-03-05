@@ -28,12 +28,18 @@ uniform float mindist = 0.001f;
 uniform float3 plane_norm = normalize(vec3(0.0f, 1.0f, 0.0f));
 uniform float2 vec_tor = vec2(1.0f, 0.1f);
 uniform float3 vec_cyl = float3(0.0,0.0,0.1);
-uniform mat4 m = mat4(
+uniform vec2 vec_cone = normalize(vec2(1.5f, 1.0f));
+
+uniform mat4 mTor = mat4(
     1, 0, 0, 0,
     0, 0.86602540378, 0.5, 0,
     0, -0.5, 0.86602540378, 0,
     0, 0, 0, 1);
-
+uniform mat4 mCone = mat4(
+    1, 0, 0, 0,
+    0, 0, -1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1);
 float3 EyeRayDir(float x, float y, float w, float h)
 {
 	float fov = 3.141592654f/(2.0f); 
@@ -66,7 +72,7 @@ float sdTorus(vec3 p, vec2 t)
 }
 float turnTor( vec3 p)
 {
-    mat4 inv = inverse(m);
+    mat4 inv = inverse(mTor);
     vec3 q = (inv*vec4(p, 1.0)).xyz;
     return sdTorus(q, vec_tor);
 }
@@ -76,6 +82,19 @@ float sdCylinder( vec3 p, vec3 c )
   return length(p.xz-c.xy)-c.z;
 }
 
+float sdCone( vec3 p, vec2 c )
+{
+    // c must be normalized
+    float q = length(p.xy);
+    return dot(c,vec2(q,p.z));
+}
+
+float turnCone( vec3 p)
+{
+    mat4 inv = inverse(mCone);
+    vec3 q = (inv*vec4(p, 1.0)).xyz;
+    return sdCone(q, vec_cone);
+}
 
 float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
     int max_steps = 64;
@@ -94,6 +113,9 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
                 break;
             case 4:
                 dist = sdCylinder(ray_pos, vec_cyl);
+                break;
+            case 5:
+                dist = turnCone(ray_pos);
                 break;
 
         }
@@ -115,7 +137,7 @@ float2 ManyRayIntersection(vec3 ray_pos, vec3 ray_dir) { // rez.x - рассто
     float2 rez;
     rez.x = d;
     rez.y = 1;
-    for (int i = 2; i < 5; i++) {
+    for (int i = 2; i < 6; i++) {
         float new_dist = RayIntersection(ray_pos, ray_dir, i);
         if (new_dist != -1.0f) {
             if (rez.x == -1.0f || rez.x > new_dist) {
@@ -136,6 +158,8 @@ float DistanceEvaluation(float3 v, int number_figure)
             return turnTor(v);
         case 4:
             return sdCylinder(v, vec_cyl);
+        case 5:
+            return turnCone(v);
     }
 }
 
@@ -207,6 +231,11 @@ void main(void)
                 objectColor = float3(0.0, 1.0, 1.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 4));
+                break;
+            case 5:
+                objectColor = float3(1.0, 0.8, 0.0);
+                point_pos = ray_pos + ray_dir * intersect.x;
+                norm = normalize(EstimateNormal(point_pos, 0.01f, 5));
                 break;
         }
 
