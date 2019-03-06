@@ -12,6 +12,7 @@ layout(location = 0) out vec4 fragColor;
 
 uniform int g_screenWidth;
 uniform int g_screenHeight;
+uniform int number_task;
 
 uniform float3 g_bBoxMin   = float3(-1,-1,-1);
 uniform float3 g_bBoxMax   = float3(+1,+1,+1);
@@ -103,13 +104,13 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
     for (int i = 0; i < max_steps; i++) {
         switch (number_figure) {
             case 1:
-                dist = sdSphere(ray_pos - float3(0.5, 0.5, 0.5), 0.3f);
+                dist = sdSphere(ray_pos - float3(0.5, 1.05, 0.5), 0.3f);
                 break;
             case 2:
                 dist = sdPlane(ray_pos, vec4(plane_norm, 1.0f));
                 break;
             case 3:
-                dist = turnTor(ray_pos - float3(0.2, 0.0, 0.0));
+                dist = turnTor(ray_pos - vec3(0.0f, 1.0f, 0.0f));
                 break;
             case 4:
                 dist = sdCylinder(ray_pos, vec_cyl);
@@ -200,14 +201,15 @@ void main(void)
     ray_pos = (g_rayMatrix*float4(ray_pos,1)).xyz;
     ray_dir = float3x3(g_rayMatrix)*ray_dir;
     float3 light[2];
-    light[0] = float3(1.5f, 1.5f, 1.0f);
-    light[1] = float3(0.8f, -1.0f, 0.5f);
+    light[0] = float3(0.5f, 1.8f, 0.5f);
+    light[1] = float3(0.7f, 1.0f, 0.3f);
     float3 lightColor = float3(1.0f, 1.0f, 1.0f);
 
 
     float2 intersect = ManyRayIntersection(ray_pos, ray_dir);
     float3 norm, result, point_pos, objectColor;
     float3 ItogColor = float3(0.0f, 0.0f, 0.0f);
+    float3 ambientStrength, diffuseStrength, specularStrength;
     if (intersect.x ==  -1.0f) {
         fragColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
     } else {
@@ -216,50 +218,63 @@ void main(void)
                 objectColor = float3(0.0, 1.0, 0.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 1));
+                ambientStrength = float3(0.0215, 0.1745, 0.0215);
+                diffuseStrength = float3(0.07568, 0.61424, 0.07568);
+                specularStrength = float3(0.633, 0.727811,	0.633);
                 break;
             case 2:
                 objectColor = float3(1.0, 0.0, 0.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 2));
+                ambientStrength = float3(0.1745, 0.01175, 0.01175);
+                diffuseStrength = float3(0.61424, 0.04136, 0.04136);
+                specularStrength = float3(0.727811, 0.626959, 0.626959);
                 break;
             case 3:
-                objectColor = float3(0.0, 0.0, 1.0);
+                objectColor = float3(0.86, 0.90, 0.92);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 3));
+                ambientStrength = float3(0.25, 0.25, 0.25);
+                diffuseStrength = float3(0.4, 0.4, 0.4);
+                specularStrength = float3(0.774597, 0.774597, 0.774597);
                 break;
             case 4:
                 objectColor = float3(0.0, 1.0, 1.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 4));
+                ambientStrength = float3( 0.1,0.18725, 0.1745);
+                diffuseStrength = float3(0.396, 0.74151, 0.69102);
+                specularStrength = float3(0.297254, 0.30829, 0.306678);
                 break;
             case 5:
                 objectColor = float3(1.0, 0.8, 0.0);
                 point_pos = ray_pos + ray_dir * intersect.x;
                 norm = normalize(EstimateNormal(point_pos, 0.01f, 5));
+                ambientStrength = float3(0.24725, 0.1995, 0.0745);
+                diffuseStrength = float3(0.75164, 0.60648, 0.22648);
+                specularStrength = float3(0.628281, 0.555802, 0.366065);
                 break;
         }
 
         for (int j = 0; j < 3; j++) {
             float3 cur_light = light[j];
             
-            float ambientStrength = 0.15f;
             float3 ambient = ambientStrength * lightColor;     
             float3 lightDir = normalize(cur_light - point_pos);
-            if (length((cur_light + ManyRayIntersection(cur_light, -lightDir).x * (-lightDir)) - point_pos) > 0.1f) {
+            if (number_task == 1 && length((cur_light + ManyRayIntersection(cur_light, -lightDir).x * (-lightDir)) - point_pos) > 0.1f) {
                 result = ambient * objectColor; //shadow
             } else {
                 float diff = max(dot(norm, lightDir), 0.0);
-                float3 diffuse = diff * lightColor;
+                float3 diffuse = diffuseStrength * diff * lightColor;
 
-                float specularStrength = 0.5f;
                 float3 viewDir = normalize(g_camPos - point_pos);
                 float3 reflectDir = reflect(-lightDir, norm);
-                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128);
                 float3 specular = specularStrength * spec * lightColor;
   
                 result = (ambient + diffuse + specular) * objectColor;
             }
-            ItogColor += result;
+            ItogColor += 0.5 * result;
         }
 
  
