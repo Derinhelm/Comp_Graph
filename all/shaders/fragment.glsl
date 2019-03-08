@@ -13,6 +13,8 @@ layout(location = 0) out vec4 fragColor;
 uniform int g_screenWidth;
 uniform int g_screenHeight;
 uniform int number_task;
+uniform int move1;
+uniform int move2;
 
 uniform float3 g_bBoxMin   = float3(-1,-1,-1);
 uniform float3 g_bBoxMax   = float3(+1,+1,+1);
@@ -25,9 +27,10 @@ uniform float4   g_bgColor = float4(0,0,1,1);
 uniform float3 g_camPos = float3(0, 0, 5);
 
 uniform float mindist = 0.001f;
+uniform float my_t;
 
 uniform float3 plane_norm = normalize(vec3(0.0f, 1.0f, 0.0f));
-uniform float2 vec_tor = vec2(1.0f, 0.1f);
+uniform float2 vec_tor = vec2(1.1f, 0.1f);
 uniform float3 vec_cyl = float3(0.0,0.0,0.1);
 uniform vec2 vec_cone = normalize(vec2(1.5f, 1.0f));
 
@@ -104,13 +107,24 @@ float RayIntersection(vec3 ray_pos, vec3 ray_dir, int number_figure){
     for (int i = 0; i < max_steps; i++) {
         switch (number_figure) {
             case 1:
-                dist = sdSphere(ray_pos - float3(0.5, 1.05, 0.5), 0.3f);
+                if (move2 == 1) {
+                    float x = cos(2 * my_t) * 0.5;
+                    float z = sin(2 * my_t) * 0.5;
+                    dist = sdSphere(ray_pos - float3(x, 1.05, z), 0.2f);
+                } else {
+                    dist = sdSphere(ray_pos - float3(0.5, 1.05, 0.5), 0.2f);
+                }
                 break;
             case 2:
                 dist = sdPlane(ray_pos, vec4(plane_norm, 1.0f));
                 break;
             case 3:
-                dist = turnTor(ray_pos - vec3(0.0f, 1.0f, 0.0f));
+                if (move1 == 1) {
+                    float t = (sin(my_t) / 2 + 0.5) * 2;
+                    dist = turnTor(ray_pos - vec3(0.0f, t, 0.0f));
+                } else {
+                    dist = turnTor(ray_pos - vec3(0.0f, 1.0f, 0.0f));
+                }
                 break;
             case 4:
                 dist = sdCylinder(ray_pos, vec_cyl);
@@ -283,4 +297,3 @@ void main(void)
     
 
 }
-
